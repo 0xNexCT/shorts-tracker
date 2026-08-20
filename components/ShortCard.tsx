@@ -108,7 +108,7 @@ export default function ShortCard({ short }: { short: Short }) {
           <div className="rounded-lg bg-gray-900/80 px-1 py-1.5">
             <div className="text-xs font-bold text-white">{formatCount(short.likeCount)}</div>
             <div className="text-[10px] text-gray-400">
-              likes · <span className="text-gray-500">{likeRatio}</span>
+              likes · <span className="font-medium text-white">{likeRatio}</span>
             </div>
           </div>
           <div className="rounded-lg bg-gray-900/80 px-1 py-1.5">
