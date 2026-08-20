@@ -1,0 +1,90 @@
+// Prisma schema for Shorts Tracker
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid()) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  channels  Channel[]
+
+  @@map("users")
+}
+
+enum Bucket {
+  old
+  latest
+}
+
+model Channel {
+  id                String    @id @default(cuid())
+  youtubeChannelId  String
+  handle            String
+  uploadsPlaylistId String
+  addedAt           DateTime  @default(now()) @map("added_at")
+  oldFromDate       DateTime? @map("old_from_date") @db.Date
+  oldToDate         DateTime? @map("old_to_date") @db.Date
+  userId            String    @map("user_id") @db.Uuid
+
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shorts            Short[]
+
+  @@unique([userId, youtubeChannelId])
+  @@unique([userId, handle])
+  @@index([userId])
+  @@map("channels")
+}
+
+model Short {
+  id                    String    @id @default(cuid())
+  channelId             String    @map("channel_id")
+  videoId               String
+  title                 String
+  thumbnailUrl          String    @map("thumbnail_url")
+  publishedAt           DateTime  @map("published_at")
+  viewCount             Int
+  likeCount             Int
+  commentCount          Int
+  lastUpdatedAt         DateTime  @map("last_updated_at")
+  bucket                Bucket    @default(latest)
+  addedToMonitoringAt   DateTime  @default(now()) @map("added_to_monitoring_at")
+
+  channel               Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  viewSnapshots         ViewSnapshot[]
+
+  @@unique([channelId, videoId])
+  @@index([channelId])
+  @@index([channelId, bucket])
+  @@index([videoId])
+  @@map("shorts")
+}
+
+model ViewSnapshot {
+  id         String   @id @default(cuid())
+  shortId    String   @map("short_id")
+  viewCount  Int      @map("view_count")
+  capturedAt DateTime @default(now()) @map("captured_at")
+
+  short      Short    @relation(fields: [shortId], references: [id], onDelete: Cascade)
+
+  @@index([shortId, capturedAt])
+  @@map("view_snapshots")
+}
+
+model ApiUsageLog {
+  id        String   @id @default(cuid())
+  endpoint  String
+  unitsCost Int      @map("units_cost")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("api_usage_log")
+}
