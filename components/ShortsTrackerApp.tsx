@@ -14,6 +14,12 @@ const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
   { value: "comments", label: "Most comments" },
 ];
 
+function formatCountdown(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function ShortsTrackerApp() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +33,7 @@ export default function ShortsTrackerApp() {
   const [smmConfig, setSmmConfig] = useState<SmmConfig | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [checkingOrders, setCheckingOrders] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(15 * 60);
 
   const loadQuota = useCallback(async () => {
     try {
@@ -85,8 +92,23 @@ export default function ShortsTrackerApp() {
       setError("Failed to check orders.");
     } finally {
       setCheckingOrders(false);
+      setSecondsLeft(15 * 60);
     }
   }
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          checkPendingOrders();
+          return 15 * 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleAdd(input: string, range: ChannelRangeInput): Promise<AddChannelResult[]> {
     try {
@@ -267,6 +289,15 @@ export default function ShortsTrackerApp() {
                 "Check Orders"
               )}
             </button>
+            <div
+              className="flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-xs font-mono font-semibold text-emerald-400"
+              title="Next 15-minute auto-like check"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {formatCountdown(secondsLeft)}
+            </div>
             <button
               onClick={() => setShowSettings(true)}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600/90 px-4 py-2 text-xs font-semibold text-white ring-1 ring-rose-500/40 transition hover:bg-rose-500"
