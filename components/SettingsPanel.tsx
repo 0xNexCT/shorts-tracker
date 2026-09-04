@@ -186,7 +186,8 @@ export default function SettingsPanel({ onClose, onSaved }: Props) {
                 Auto-buying starts once a video&apos;s views reach the threshold. This default (800)
                 applies to every channel; set a channel-specific threshold in its Edit panel to
                 override it. Repeat orders run every cycle while the like ratio stays below the
-                target.
+                target — if an order fails (e.g. low balance or bad key), it&apos;s retried
+                automatically on the next cycle after you add funds.
               </p>
             </div>
 

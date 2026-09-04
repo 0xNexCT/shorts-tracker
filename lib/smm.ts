@@ -200,6 +200,39 @@ export interface PendingCheckResult {
   updated: number;
 }
 
+export interface PanelBalance {
+  balance: string;
+  currency: string;
+}
+
+/**
+ * Fetch the panel's account balance. read-only; never touches orders.
+ */
+export async function getPanelBalance(config: SmmConfigRow): Promise<PanelBalance> {
+  const body = new URLSearchParams({ key: config.apiKey, action: "balance" });
+  const res = await fetch(config.apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  const text = await res.text();
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`SMM panel returned non-JSON: ${text.slice(0, 200)}`);
+  }
+  const obj = data as Record<string, unknown>;
+  if (typeof obj?.balance === "string" || typeof obj?.balance === "number") {
+    return {
+      balance: String(obj.balance),
+      currency: typeof obj?.currency === "string" ? obj.currency : "",
+    };
+  }
+  if (typeof obj?.error === "string") throw new Error(`SMM panel error: ${obj.error}`);
+  throw new Error(`Unexpected SMM panel response: ${text.slice(0, 200)}`);
+}
+
 /**
  * Refresh the status of every pending/partial order in the DB against the
  * panel. Used by the 15-min cron so badges self-update without a manual click.
