@@ -32,6 +32,10 @@ export async function GET() {
               orderBy: { capturedAt: "desc" },
               select: { viewCount: true, capturedAt: true },
             },
+            smmOrders: {
+              orderBy: { createdAt: "desc" },
+              take: 5,
+            },
           },
         },
       },

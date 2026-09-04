@@ -22,6 +22,8 @@ export interface Short {
   addedToMonitoringAt: string;
   /** The 2 latest hourly view captures, newest first. */
   viewSnapshots?: ViewSnapshot[];
+  /** Recent SMM order logs for this short, newest first. */
+  smmOrders?: SmmOrderLog[];
 }
 
 export interface Channel {
@@ -33,7 +35,36 @@ export interface Channel {
   /** Historical range to track as "old" videos (inclusive days), or null. */
   oldFromDate: string | null;
   oldToDate: string | null;
+  /** Auto-buy likes once a video reaches this many views. Null/0 = gate disabled. */
+  autoLikeThreshold: number | null;
   shorts: Short[];
+}
+
+export type SmmOrderStatus = "PENDING" | "COMPLETED" | "FAILED" | "PARTIAL";
+
+export interface SmmOrderLog {
+  id: string;
+  shortId: string;
+  serviceId: number;
+  panelOrderId: number | null;
+  quantity: number;
+  status: SmmOrderStatus;
+  trigger: "ratio" | "threshold";
+  startViews: number;
+  startLikes: number;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SmmConfig {
+  apiUrl: string;
+  apiKey: string;
+  enabled: boolean;
+  likeServiceId: number;
+  likeTargetRatio: number;
+  likeQuantity: number;
+  minOrderGapMinutes: number;
 }
 
 export interface AddChannelResult {

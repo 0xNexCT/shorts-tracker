@@ -42,9 +42,10 @@ export async function PATCH(
 
     const hasFrom = (body as Record<string, unknown>).oldFromDate !== undefined;
     const hasTo = (body as Record<string, unknown>).oldToDate !== undefined;
-    if (!hasFrom && !hasTo) {
+    const hasThreshold = (body as Record<string, unknown>).autoLikeThreshold !== undefined;
+    if (!hasFrom && !hasTo && !hasThreshold) {
       return NextResponse.json(
-        { error: "Nothing to change. Send oldFromDate and/or oldToDate." },
+        { error: "Nothing to change. Send oldFromDate and/or oldToDate and/or autoLikeThreshold." },
         { status: 400 }
       );
     }
@@ -76,7 +77,14 @@ export async function PATCH(
       }
     }
 
-    const result = await updateChannelMonitoring(userId, id, next);
+    const result = await updateChannelMonitoring(
+      userId,
+      id,
+      next,
+      (body as Record<string, unknown>).autoLikeThreshold !== undefined
+        ? ((body as Record<string, unknown>).autoLikeThreshold as number | null)
+        : undefined
+    );
     return NextResponse.json({ status: "ok", ...result, channel: sanitizeChannel(result.channel) });
   } catch (err) {
     console.error(`PATCH /api/channels/${id} failed:`, err);

@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Channel, AddChannelResult, SortKey, Quota } from "@/lib/types";
+import { Channel, AddChannelResult, SortKey, Quota, SmmConfig } from "@/lib/types";
 import AddChannelForm, { ChannelRangeInput } from "./AddChannelForm";
 import ChannelCard, { ChannelRangeEdit } from "./ChannelCard";
 import QuotaBadge from "./QuotaBadge";
+import SettingsPanel from "./SettingsPanel";
 
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
   { value: "published", label: "Newest first" },
@@ -23,6 +24,9 @@ export default function ShortsTrackerApp() {
   const [saving, setSaving] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("published");
   const [quota, setQuota] = useState<Quota | null>(null);
+  const [smmConfig, setSmmConfig] = useState<SmmConfig | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [checkingOrders, setCheckingOrders] = useState(false);
 
   const loadQuota = useCallback(async () => {
     try {
@@ -51,6 +55,38 @@ export default function ShortsTrackerApp() {
     loadChannels();
     loadQuota();
   }, [loadChannels, loadQuota]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/settings", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setSmmConfig(data.config);
+        }
+      } catch {
+        // Non-critical; the settings button stays available regardless.
+      }
+    })();
+  }, []);
+
+  async function checkPendingOrders() {
+    setCheckingOrders(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/orders/check", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to check orders.");
+      } else {
+        await loadChannels();
+      }
+    } catch {
+      setError("Failed to check orders.");
+    } finally {
+      setCheckingOrders(false);
+    }
+  }
 
   async function handleAdd(input: string, range: ChannelRangeInput): Promise<AddChannelResult[]> {
     try {
@@ -125,6 +161,7 @@ export default function ShortsTrackerApp() {
         body: JSON.stringify({
           oldFromDate: range.oldFromDate || null,
           oldToDate: range.oldToDate || null,
+          autoLikeThreshold: range.autoLikeThreshold,
         }),
       });
       const data = await res.json();
@@ -211,6 +248,31 @@ export default function ShortsTrackerApp() {
                 "Refresh All"
               )}
             </button>
+            <button
+              onClick={checkPendingOrders}
+              disabled={checkingOrders || !smmConfig?.enabled}
+              title={
+                smmConfig?.enabled
+                  ? "Re-check pending SMM order statuses against the panel"
+                  : "Enable SMM automation in Settings first"
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-xs font-semibold text-gray-200 ring-1 ring-gray-700 transition hover:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {checkingOrders ? (
+                <>
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-t-sky-400" />
+                  Checking…
+                </>
+              ) : (
+                "Check Orders"
+              )}
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600/90 px-4 py-2 text-xs font-semibold text-white ring-1 ring-rose-500/40 transition hover:bg-rose-500"
+            >
+              Settings
+            </button>
           </div>
         </div>
       </header>
@@ -261,6 +323,13 @@ export default function ShortsTrackerApp() {
           ))
         )}
       </main>
+
+      {showSettings && (
+        <SettingsPanel
+          onClose={() => setShowSettings(false)}
+          onSaved={(cfg) => setSmmConfig(cfg)}
+        />
+      )}
 
       <footer className="border-t border-gray-800 py-6 text-center text-xs text-gray-600">
         Powered by the YouTube Data API v3 · data refreshes on demand

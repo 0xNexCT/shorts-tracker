@@ -33,6 +33,9 @@ model Channel {
   oldFromDate       DateTime? @map("old_from_date") @db.Date
   oldToDate         DateTime? @map("old_to_date") @db.Date
   userId            String    @map("user_id") @db.Uuid
+  /// Auto-buy likes once a video on this channel reaches this many views.
+  /// null/0 disables the views gate for this channel.
+  autoLikeThreshold Int?      @map("auto_like_threshold")
 
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   shorts            Short[]
@@ -59,12 +62,35 @@ model Short {
 
   channel               Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
   viewSnapshots         ViewSnapshot[]
+  smmOrders             SmmOrderLog[]
 
   @@unique([channelId, videoId])
   @@index([channelId])
   @@index([channelId, bucket])
   @@index([videoId])
   @@map("shorts")
+}
+
+model SmmOrderLog {
+  id          String   @id @default(cuid())
+  shortId     String   @map("short_id")
+  serviceId   Int      @map("service_id")
+  panelOrderId Int?    @map("panel_order_id")
+  quantity    Int
+  status      String   @default("PENDING")
+  trigger     String
+  startViews  Int      @map("start_views")
+  startLikes  Int      @map("start_likes")
+  note        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  short       Short    @relation(fields: [shortId], references: [id], onDelete: Cascade)
+
+  @@index([shortId, createdAt])
+  @@index([status])
+  @@index([trigger])
+  @@map("smm_order_log")
 }
 
 model ViewSnapshot {
@@ -87,4 +113,19 @@ model ApiUsageLog {
 
   @@index([createdAt])
   @@map("api_usage_log")
+}
+
+/// Global one-row SMM panel automation config (a single row id="global").
+model SmmConfig {
+  id                 String   @id @default("global")
+  apiUrl             String   @default("https://cheapestsmmpanels.com/api/v2") @map("api_url")
+  apiKey             String   @default("") @map("api_key")
+  enabled            Boolean  @default(false)
+  likeServiceId      Int      @default(2952) @map("like_service_id")
+  likeTargetRatio    Float    @default(1.2) @map("like_target_ratio")
+  likeQuantity       Int      @default(12) @map("like_quantity")
+  minOrderGapMinutes Int      @default(60) @map("min_order_gap_minutes")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("smm_config")
 }

@@ -6,6 +6,7 @@ import { formatRelative } from "@/lib/format";
 export interface ChannelRangeEdit {
   oldFromDate: string;
   oldToDate: string;
+  autoLikeThreshold: number | null;
 }
 
 interface Props {
@@ -93,6 +94,9 @@ export default function ChannelCard({
   const [editing, setEditing] = useState(false);
   const [fromDraft, setFromDraft] = useState(channel.oldFromDate?.slice(0, 10) ?? "");
   const [toDraft, setToDraft] = useState(channel.oldToDate?.slice(0, 10) ?? "");
+  const [thresholdDraft, setThresholdDraft] = useState(
+    channel.autoLikeThreshold != null ? String(channel.autoLikeThreshold) : ""
+  );
 
   const latest = channel.shorts.filter((s) => s.bucket === "latest");
   const old = channel.shorts.filter((s) => s.bucket === "old");
@@ -104,7 +108,10 @@ export default function ChannelCard({
 
   async function handleSave() {
     if (rangeConflict) return;
-    await onSave(channel.id, { oldFromDate: fromDraft, oldToDate: toDraft });
+    const trimmed = thresholdDraft.trim();
+    const threshold = trimmed === "" ? null : Number(trimmed);
+    if (threshold !== null && (!Number.isFinite(threshold) || threshold < 0)) return;
+    await onSave(channel.id, { oldFromDate: fromDraft, oldToDate: toDraft, autoLikeThreshold: threshold });
     setEditing(false);
   }
 
@@ -152,6 +159,9 @@ export default function ChannelCard({
             onClick={() => {
               setFromDraft(channel.oldFromDate?.slice(0, 10) ?? "");
               setToDraft(channel.oldToDate?.slice(0, 10) ?? "");
+              setThresholdDraft(
+                channel.autoLikeThreshold != null ? String(channel.autoLikeThreshold) : ""
+              );
               setEditing((v) => !v);
             }}
             disabled={removing || refreshing}
@@ -208,6 +218,17 @@ export default function ChannelCard({
               className="rounded-lg border border-gray-700 bg-gray-900 px-2.5 py-1.5 text-sm text-white outline-none focus:border-sky-500"
             />
           </label>
+          <label className="flex flex-col gap-1 text-xs text-gray-400">
+            Auto-like views threshold
+            <input
+              type="number"
+              min={0}
+              value={thresholdDraft}
+              onChange={(e) => setThresholdDraft(e.target.value)}
+              placeholder="800"
+              className="w-28 rounded-lg border border-gray-700 bg-gray-900 px-2.5 py-1.5 text-sm text-white outline-none focus:border-sky-500"
+            />
+          </label>
           <button
             onClick={handleSave}
             disabled={rangeConflict || saving}
@@ -225,7 +246,7 @@ export default function ChannelCard({
           <p className="text-[11px] text-gray-500">
             {rangeConflict
               ? "Old videos to must be on or after Old videos from."
-              : "Videos published within the range are pulled in as \"Old\". Clearing the range keeps existing videos but stops old backfills; narrowing never untracks anything."}
+              : "Videos published within the range are pulled in as \"Old\". Clearing the range keeps existing videos but stops old backfills; narrowing never untracks anything. Leave the auto-like threshold blank to disable auto-buying for this channel."}
           </p>
         </div>
       )}

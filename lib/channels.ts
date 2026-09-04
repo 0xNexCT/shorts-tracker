@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { Prisma } from "@prisma/client";
 import {
   resolveChannel,
   fetchVideoDetails,
@@ -8,6 +9,7 @@ import {
   MAX_DISCOVERY_ITEMS,
   YouTubeApiError,
 } from "./youtube";
+import { evaluateChannelAutomation } from "./automation";
 
 const MAX_HANDLES_PER_REQUEST = 20;
 // Upper bound (~50 playlist pages) for a single historical-range scan. Guards
@@ -360,6 +362,9 @@ export async function runChannelMonitoring(
   const discovered = await discoverLatestShorts(channel);
   const { updated, snapshotted } = await refreshChannelStats(channel.id, opts.snapshot);
 
+  // SMM automation: auto-buy likes gated by the channel's views threshold.
+  await evaluateChannelAutomation(channel.id);
+
   return { discovered, statsUpdated: updated, snapshotted };
 }
 
@@ -382,14 +387,24 @@ export async function refreshChannelMonitoring(
  * changed, newly-in-range videos are pulled in; nothing is ever deleted or
  * untracked when the range is narrowed.
  */
-export async function updateChannelMonitoring(userId: string, channelId: string, next: OldRange) {
+export async function updateChannelMonitoring(
+  userId: string,
+  channelId: string,
+  next: OldRange,
+  autoLikeThreshold?: number | null
+) {
   const existing = await prisma.channel.findUnique({ where: { id: channelId, userId } });
   if (!existing) throw new YouTubeApiError("Channel not found for this user.", 404);
 
-  await prisma.channel.update({
-    where: { id: channelId },
-    data: { oldFromDate: next.oldFromDate, oldToDate: next.oldToDate },
-  });
+  const patch: Prisma.ChannelUpdateInput = {
+    oldFromDate: next.oldFromDate,
+    oldToDate: next.oldToDate,
+  };
+  if (autoLikeThreshold !== undefined) {
+    patch.autoLikeThreshold = autoLikeThreshold === null ? null : autoLikeThreshold;
+  }
+
+  await prisma.channel.update({ where: { id: channelId }, data: patch });
 
   const oldBackfilled = await seedOldRange({
     id: channelId,

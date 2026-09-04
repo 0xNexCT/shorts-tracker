@@ -1,4 +1,4 @@
-import { Short, ViewSnapshot } from "@/lib/types";
+import { Short, ViewSnapshot, SmmOrderLog } from "@/lib/types";
 import { formatCount, formatDate, formatRelative } from "@/lib/format";
 import { computeGrowth, formatDuration, GrowthResult } from "@/lib/growth";
 
@@ -62,6 +62,42 @@ function GrowthBadge({ result, snapshotCount }: { result: GrowthResult; snapshot
   }
 }
 
+function AutomationBadge({ orders }: { orders: SmmOrderLog[] }) {
+  if (!orders || orders.length === 0) return null;
+  const last = orders[0];
+  const total = orders.length;
+
+  const styles: Record<string, string> = {
+    PENDING: "bg-amber-950/60 text-amber-400",
+    COMPLETED: "bg-emerald-950/60 text-emerald-400",
+    PARTIAL: "bg-orange-950/60 text-orange-400",
+    FAILED: "bg-red-950/60 text-red-400",
+  };
+
+  const label: Record<string, string> = {
+    PENDING: "pending",
+    COMPLETED: "voiced ✓",
+    PARTIAL: "partial",
+    FAILED: "failed",
+  };
+
+  const title = [
+    `last auto-like: ${last.quantity}× (${last.trigger})`,
+    `panel id: ${last.panelOrderId ?? "n/a"} · status: ${last.status}`,
+    `placed ${formatRelative(last.createdAt)} @ ${last.startViews.toLocaleString("en-US")} views`,
+    `${total} auto-like order${total === 1 ? "" : "s"} in total`,
+  ].join("\n");
+
+  return (
+    <span
+      title={title}
+      className={`cursor-help rounded px-1.5 py-0.5 text-[10px] font-semibold ${styles[last.status] ?? "bg-gray-800 text-gray-400"}`}
+    >
+      {label[last.status] ?? last.status.toLowerCase()}
+    </span>
+  );
+}
+
 export default function ShortCard({ short }: { short: Short }) {
   const snaps: ViewSnapshot[] = short.viewSnapshots ?? [];
   const result = computeGrowth(snaps);
@@ -121,6 +157,7 @@ export default function ShortCard({ short }: { short: Short }) {
           <span title={formatDate(short.publishedAt)}>{formatRelative(short.publishedAt)}</span>
           <span className="flex items-center gap-2">
             <GrowthBadge result={result} snapshotCount={snaps.length} />
+            <AutomationBadge orders={short.smmOrders ?? []} />
             <span>updated {formatRelative(short.lastUpdatedAt)}</span>
           </span>
         </div>
