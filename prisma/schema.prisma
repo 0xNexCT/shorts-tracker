@@ -125,6 +125,7 @@ model SmmConfig {
   likeTargetRatio    Float    @default(1.2) @map("like_target_ratio")
   likeQuantity       Int      @default(12) @map("like_quantity")
   minOrderGapMinutes Int      @default(60) @map("min_order_gap_minutes")
+  defaultThreshold   Int?     @default(800) @map("default_threshold")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("smm_config")

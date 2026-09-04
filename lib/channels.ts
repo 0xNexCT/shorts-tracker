@@ -26,6 +26,7 @@ export interface ChannelMonitoringResult {
   discovered: number;
   statsUpdated: number;
   snapshotted: number;
+  autoOrders: number;
 }
 
 type Bucket = "old" | "latest";
@@ -363,9 +364,9 @@ export async function runChannelMonitoring(
   const { updated, snapshotted } = await refreshChannelStats(channel.id, opts.snapshot);
 
   // SMM automation: auto-buy likes gated by the channel's views threshold.
-  await evaluateChannelAutomation(channel.id);
+  const autoOrders = await evaluateChannelAutomation(channel.id);
 
-  return { discovered, statsUpdated: updated, snapshotted };
+  return { discovered, statsUpdated: updated, snapshotted, autoOrders };
 }
 
 /**

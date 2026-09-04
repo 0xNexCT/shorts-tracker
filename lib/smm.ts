@@ -11,6 +11,7 @@ export interface SmmConfigRow {
   likeTargetRatio: number;
   likeQuantity: number;
   minOrderGapMinutes: number;
+  defaultThreshold: number | null;
   updatedAt: Date;
 }
 
@@ -42,6 +43,7 @@ export async function getPublicSmmConfig() {
     likeTargetRatio: c.likeTargetRatio,
     likeQuantity: c.likeQuantity,
     minOrderGapMinutes: c.minOrderGapMinutes,
+    defaultThreshold: c.defaultThreshold,
   };
 }
 

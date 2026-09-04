@@ -20,6 +20,7 @@ export default function SettingsPanel({ onClose, onSaved }: Props) {
     likeTargetRatio: 1.2,
     likeQuantity: 12,
     minOrderGapMinutes: 60,
+    defaultThreshold: "800",
   });
 
   useEffect(() => {
@@ -36,6 +37,8 @@ export default function SettingsPanel({ onClose, onSaved }: Props) {
           likeTargetRatio: data.config.likeTargetRatio,
           likeQuantity: data.config.likeQuantity,
           minOrderGapMinutes: data.config.minOrderGapMinutes,
+          defaultThreshold:
+            data.config.defaultThreshold == null ? "" : String(data.config.defaultThreshold),
         });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load settings.");
@@ -61,6 +64,8 @@ export default function SettingsPanel({ onClose, onSaved }: Props) {
           likeTargetRatio: Number(local.likeTargetRatio),
           likeQuantity: Number(local.likeQuantity),
           minOrderGapMinutes: Number(local.minOrderGapMinutes),
+          defaultThreshold:
+            local.defaultThreshold.trim() === "" ? null : Number(local.defaultThreshold),
         }),
       });
       const data = await res.json();
@@ -163,7 +168,26 @@ export default function SettingsPanel({ onClose, onSaved }: Props) {
                   Min gap between orders (min)
                   <input type="number" className={inputCls} {...mk("minOrderGapMinutes")} />
                 </label>
+                <label className="flex flex-col gap-1 text-xs text-gray-400">
+                  Default views threshold
+                  <input
+                    type="number"
+                    min={0}
+                    className={inputCls}
+                    placeholder="800"
+                    value={local.defaultThreshold}
+                    onChange={(e) =>
+                      setLocal((prev) => ({ ...prev, defaultThreshold: e.target.value }))
+                    }
+                  />
+                </label>
               </div>
+              <p className="text-[11px] text-gray-500">
+                Auto-buying starts once a video&apos;s views reach the threshold. This default (800)
+                applies to every channel; set a channel-specific threshold in its Edit panel to
+                override it. Repeat orders run every cycle while the like ratio stays below the
+                target.
+              </p>
             </div>
 
             {error && (

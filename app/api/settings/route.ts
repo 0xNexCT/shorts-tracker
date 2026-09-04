@@ -44,6 +44,12 @@ export async function POST(req: NextRequest) {
     if (typeof body.likeTargetRatio === "number") data.likeTargetRatio = body.likeTargetRatio;
     if (Number.isInteger(body.likeQuantity)) data.likeQuantity = body.likeQuantity;
     if (Number.isInteger(body.minOrderGapMinutes)) data.minOrderGapMinutes = body.minOrderGapMinutes;
+    if (body.defaultThreshold !== undefined) {
+      if (body.defaultThreshold === null) data.defaultThreshold = null;
+      else if (Number.isInteger(body.defaultThreshold) && Number(body.defaultThreshold) >= 0) {
+        data.defaultThreshold = Number(body.defaultThreshold);
+      }
+    }
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json(

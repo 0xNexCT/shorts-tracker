@@ -65,6 +65,8 @@ export interface SmmConfig {
   likeTargetRatio: number;
   likeQuantity: number;
   minOrderGapMinutes: number;
+  /** Global views threshold applied to channels that don't have their own. */
+  defaultThreshold: number | null;
 }
 
 export interface AddChannelResult {
