@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runChannelMonitoring, YouTubeApiError } from "@/lib/channels";
-import { getSmmConfig } from "@/lib/smm";
+import { checkAllPendingOrderStatuses, getSmmConfig } from "@/lib/smm";
 import { getRemainingQuota, formatResetsIn } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
@@ -99,8 +99,27 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Self-maintain pending order statuses so badges update without manual clicks.
+  let statusesChecked = 0;
+  let statusesUpdated = 0;
+  try {
+    const statusRes = await checkAllPendingOrderStatuses(config);
+    statusesChecked = statusRes.checked;
+    statusesUpdated = statusRes.updated;
+  } catch (e) {
+    console.error("pending status check failed:", e);
+    hadError = true;
+  }
+
   return NextResponse.json(
-    { status: hadError ? "partial" : "ok", channelsProcessed: channels.length, ordersPlaced, results },
+    {
+      status: hadError ? "partial" : "ok",
+      channelsProcessed: channels.length,
+      ordersPlaced,
+      statusesChecked,
+      statusesUpdated,
+      results,
+    },
     { status: hadError ? 207 : 200 }
   );
 }

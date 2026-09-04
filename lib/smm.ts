@@ -128,6 +128,9 @@ export async function queryPanelOrder(
     case "COMPLETE":
       return "COMPLETED";
     case "PARTIAL":
+    case "IN PROGRESS":
+    case "PROCESSING":
+    case "ACTIVE":
       return "PARTIAL";
     case "CANCELED":
     case "CANCELLED":
@@ -190,4 +193,46 @@ export async function placeLikeOrder(opts: PlaceOrderOptions): Promise<Awaited<R
       data: { status: "FAILED", note: message },
     });
   }
+}
+
+export interface PendingCheckResult {
+  checked: number;
+  updated: number;
+}
+
+/**
+ * Refresh the status of every pending/partial order in the DB against the
+ * panel. Used by the 15-min cron so badges self-update without a manual click.
+ */
+export async function checkAllPendingOrderStatuses(config: SmmConfigRow): Promise<PendingCheckResult> {
+  const pending = await prisma.smmOrderLog.findMany({
+    where: {
+      status: { in: ["PENDING", "PARTIAL"] },
+      panelOrderId: { not: null },
+    },
+    select: { id: true, panelOrderId: true },
+    take: 200,
+  });
+
+  let updated = 0;
+  for (const log of pending) {
+    try {
+      const status = await queryPanelOrder(config.apiUrl, config.apiKey, log.panelOrderId!);
+      if (status !== "PENDING") {
+        await prisma.smmOrderLog.update({
+          where: { id: log.id },
+          data: { status },
+        });
+        updated++;
+      }
+    } catch (e) {
+      console.error(`check order ${log.id} failed:`, e);
+      await prisma.smmOrderLog.update({
+        where: { id: log.id },
+        data: { status: "FAILED", note: "Panel status check failed." },
+      });
+      updated++;
+    }
+  }
+  return { checked: pending.length, updated };
 }
