@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Channel, AddChannelResult, SortKey, Quota, SmmConfig } from "@/lib/types";
 import AddChannelForm, { ChannelRangeInput } from "./AddChannelForm";
 import ChannelCard, { ChannelRangeEdit } from "./ChannelCard";
 import QuotaBadge from "./QuotaBadge";
 import SettingsPanel from "./SettingsPanel";
+
+const FIFTEEN_MIN_MS = 15 * 60 * 1000;
 
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
   { value: "published", label: "Newest first" },
@@ -33,7 +35,11 @@ export default function ShortsTrackerApp() {
   const [smmConfig, setSmmConfig] = useState<SmmConfig | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [checkingOrders, setCheckingOrders] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(15 * 60);
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    const now = Date.now();
+    const next = Math.ceil(now / FIFTEEN_MIN_MS) * FIFTEEN_MIN_MS;
+    return Math.max(0, Math.floor((next - now) / 1000));
+  });
 
   const loadQuota = useCallback(async () => {
     try {
@@ -92,19 +98,20 @@ export default function ShortsTrackerApp() {
       setError("Failed to check orders.");
     } finally {
       setCheckingOrders(false);
-      setSecondsLeft(15 * 60);
     }
   }
 
+  const lastFiredRef = useRef(0);
   useEffect(() => {
     const id = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          checkPendingOrders();
-          return 15 * 60;
-        }
-        return prev - 1;
-      });
+      const now = Date.now();
+      const next = Math.ceil(now / FIFTEEN_MIN_MS) * FIFTEEN_MIN_MS;
+      const remaining = Math.max(0, Math.floor((next - now) / 1000));
+      setSecondsLeft(remaining);
+      if (remaining === 0 && lastFiredRef.current !== next) {
+        lastFiredRef.current = next;
+        checkPendingOrders();
+      }
     }, 1000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
